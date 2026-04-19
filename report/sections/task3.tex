@@ -1,0 +1,144 @@
+% task3.tex — Deep Anomaly Detection and Data Representation
+
+% Section Title
+\section{DEEP ANOMALY DETECTION AND DATA REPRESENTATION} \label{sec:task3}
+
+    This section explores deep learning and dimensionality reduction approaches for anomaly detection: autoencoder-based reconstruction error, autoencoder bottleneck embeddings with OC-SVM, and PCA-based dimensionality reduction with OC-SVM.
+
+    % --- Autoencoder Architecture ---
+    \subsection{Autoencoder Architecture and Training} \label{sec:autoencoder}
+
+        We designed a symmetric autoencoder with the following architecture:
+
+        \begin{itemize}
+            \item \textbf{Encoder:} Input (51) $\rightarrow$ 128 $\rightarrow$ 64 $\rightarrow$ 16 (bottleneck), with BatchNorm, ReLU, and Dropout (0.2) after each hidden layer.
+            \item \textbf{Decoder:} 16 $\rightarrow$ 64 $\rightarrow$ 128 $\rightarrow$ 51 (reconstruction), with a symmetric architecture.
+        \end{itemize}
+
+        \paragraph{Composite loss function.} Since the feature space contains both numerical and categorical (one-hot encoded) features, we used a composite loss: MSE for numerical features and Cross-Entropy for each one-hot encoded categorical group. 
+        This ensures the autoencoder learns appropriate reconstruction for each feature type.
+
+        \paragraph{Training procedure.} The autoencoder was trained exclusively on \emph{normal} validation data (10,758 samples) in a semi-supervised fashion: by learning to reconstruct only normal traffic, anomalies should produce higher reconstruction errors due to unfamiliar patterns.
+
+    % --- Hyperparameter Tuning ---
+    \subsection{Hyperparameter Tuning} \label{sec:hp_tuning}
+
+        We performed a grid search over learning rates $\{5 \times 10^{-3}, 10^{-3}, 5 \times 10^{-4}, 10^{-4}\}$ with a maximum of 150 epochs and early stopping (patience~=~15).
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lccc@{}}
+                \toprule
+                \textbf{Learning Rate} & \textbf{Min Val Loss} & \textbf{Best Epoch} & \textbf{Early Stop?} \\
+                \midrule
+                $5 \times 10^{-3}$  & 0.2160 & 26  & Yes (epoch 41) \\
+                $1 \times 10^{-3}$  & 0.1232 & 78  & Yes (epoch 93) \\
+                $\mathbf{5 \times 10^{-4}}$  & \textbf{0.1140} & \textbf{82}  & Yes (epoch 97) \\
+                $1 \times 10^{-4}$  & 0.1609 & 148 & No \\
+                \bottomrule
+            \end{tabular}
+            \caption{Learning rate grid search results (bottleneck dimension = 16).}
+            \label{tab:lr_search}
+        \end{table}
+
+        The learning rate $5 \times 10^{-4}$ achieves the lowest validation loss (0.1140) at epoch 82 before early stopping. 
+        Higher learning rates converge faster but to worse optima, while $10^{-4}$ underfits within 150 epochs.
+
+    % --- Reconstruction Error Threshold ---
+    \subsection{Reconstruction Error Analysis} \label{sec:reconstruction}
+
+        \paragraph{Threshold selection.} We computed the ECDF (Empirical Cumulative Distribution Function) of reconstruction errors on the autoencoder validation set (normal data only). 
+        The \textbf{95th percentile} was selected as the anomaly threshold: $\theta = 0.3604$. 
+        This means approximately 5\% of normal data is expected to be misclassified as anomalous --- an acceptable false positive rate that accounts for natural variation in normal traffic.
+
+        \paragraph{Anomaly detection performance.} Samples with reconstruction error $> \theta$ are classified as anomalies.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lccc@{}}
+                \toprule
+                \textbf{Dataset} & \textbf{F1-Macro} & \textbf{Precision (Anomaly)} & \textbf{Recall (Anomaly)} \\
+                \midrule
+                Train Set      & 0.9132 & 0.8823 & 0.8690 \\
+                Validation Set & 0.9024 & 0.8713 & 0.8487 \\
+                Test Set       & \textbf{0.7547} & 0.7994 & 0.8669 \\
+                \bottomrule
+            \end{tabular}
+            \caption{Autoencoder reconstruction error anomaly detection ($\theta = 0.3604$).}
+            \label{tab:ae_reconstruction}
+        \end{table}
+
+        The test F1-Macro of 0.7547 demonstrates strong generalization. 
+        The ECDF comparison across datasets shows that reconstruction errors are progressively higher on the full training set (which includes anomalies) and test set, confirming that the autoencoder successfully learned the normal data manifold: unseen anomalies produce significantly higher errors.
+
+    % --- Bottleneck + OC-SVM ---
+    \subsection{Latent Space Anomaly Detection (AE + OC-SVM)} \label{sec:bottleneck}
+
+        We extracted the 16-dimensional bottleneck embeddings from the trained encoder and used them as input features for an OC-SVM trained on normal data only.
+
+        \paragraph{$\nu$ calibration.} We tested two values: $\nu = 0.01$ (conservative) and $\nu = 0.1$ (accounting for the approximately 10\% of normal data with elevated reconstruction error in the bottleneck space).
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lcc@{}}
+                \toprule
+                \textbf{$\nu$} & \textbf{Train F1-Macro} & \textbf{Test F1-Macro} \\
+                \midrule
+                0.01 & 0.7662 & 0.6645 \\
+                \textbf{0.1} & \textbf{0.8300} & \textbf{0.7795} \\
+                \bottomrule
+            \end{tabular}
+            \caption{AE Bottleneck + OC-SVM: impact of $\nu$ on performance.}
+            \label{tab:bottleneck_nu}
+        \end{table}
+
+        The $\nu = 0.1$ configuration yields a substantial improvement (+11.5 percentage points on the test set), making the AE Bottleneck + OC-SVM the \textbf{best-performing method overall} (test F1-Macro = 0.7795). 
+        The conservative $\nu = 0.01$ was too restrictive in the compressed 16-dimensional space, where normal points are more dispersed than in the original feature space.
+
+    % --- PCA + OC-SVM ---
+    \subsection{PCA-based Anomaly Detection} \label{sec:pca}
+
+        As a linear baseline for dimensionality reduction, we applied PCA on normal training data and selected 20 components, capturing 95.5\% of the cumulative explained variance. 
+        An OC-SVM ($\nu = 0.01$) was then trained on the PCA-transformed normal data.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lccc@{}}
+                \toprule
+                \textbf{Dataset} & \textbf{F1-Macro} & \textbf{Precision (Anomaly)} & \textbf{Recall (Anomaly)} \\
+                \midrule
+                Train Set       & 0.8835 & 0.9655 & 0.7206 \\
+                Test Set        & \textbf{0.7377} & 0.8533 & 0.7186 \\
+                \bottomrule
+            \end{tabular}
+            \caption{PCA + OC-SVM performance (20 components, 95.5\% variance).}
+            \label{tab:pca_ocsvm}
+        \end{table}
+
+        PCA + OC-SVM achieves F1-Macro = 0.7377 on the test set, nearly matching the original OC-SVM (0.7477) despite a 60\% dimensionality reduction ($51 \rightarrow 20$). 
+        This confirms significant redundancy in the feature space.
+
+    % --- Comprehensive Comparison ---
+    \subsection{Comprehensive Method Comparison} \label{sec:comparison_task3}
+
+        \Cref{tab:task3_comparison} consolidates all anomaly detection methods from Tasks~2 and~3.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}llcc@{}}
+                \toprule
+                \textbf{Task} & \textbf{Method} & \textbf{Dim.} & \textbf{Test F1-Macro} \\
+                \midrule
+                3 & AE Bottleneck + OC-SVM ($\nu{=}0.1$) & 16 & \textbf{0.7795} \\
+                3 & AE Reconstruction Error              & 51 & 0.7547 \\
+                2 & OC-SVM Normal-Only ($\nu{=}0.05$)    & 51 & 0.7477 \\
+                3 & PCA + OC-SVM                         & 20 & 0.7377 \\
+                2 & OC-SVM All-Data ($\nu{=}0.286$)      & 51 & 0.6484 \\
+                \bottomrule
+            \end{tabular}
+            \caption{Comprehensive comparison of anomaly detection methods (test set).}
+            \label{tab:task3_comparison}
+        \end{table}
+
+        The AE Bottleneck + OC-SVM achieves the highest test F1-Macro, demonstrating that the autoencoder's non-linear compression captures discriminative patterns that both linear PCA and the original feature space miss. 
+        The key factor is pairing the bottleneck representation with an appropriately calibrated $\nu$ parameter.

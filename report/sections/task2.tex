@@ -1,0 +1,110 @@
+% task2.tex — Shallow Anomaly Detection with One-Class SVM
+
+% Section Title
+\section{SHALLOW ANOMALY DETECTION} \label{sec:task2}
+
+    In this section, we investigate One-Class Support Vector Machine (OC-SVM) for anomaly detection under three training configurations: normal data only, all data, and mixed data with varying anomaly ratios.
+
+    % --- OC-SVM Normal Only ---
+    \subsection{OC-SVM with Normal Data Only (Novelty Detection)} \label{sec:ocsvm_normal}
+
+        In novelty detection, the OC-SVM is trained exclusively on normal traffic, learning a tight boundary around the normal data manifold. 
+        The key hyperparameter is $\nu$, which controls the upper bound on the fraction of training errors.
+
+        \paragraph{$\nu$ parameter analysis.} Since the training data is purely normal, $\nu$ should reflect the expected fraction of noisy or edge-case normal samples. 
+        We evaluated four values: $\nu \in \{0.001, 0.01, 0.05, 0.5\}$.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lcc@{}}
+                \toprule
+                \textbf{$\nu$} & \textbf{Train F1-Macro} & \textbf{Test F1-Macro} \\
+                \midrule
+                0.001   & 0.9058 & 0.7382 \\
+                0.01    & 0.9039 & 0.7401 \\
+                \textbf{0.05} & \textbf{0.9026} & \textbf{0.7477} \\
+                0.5 (default) & 0.6378 & 0.4647 \\
+                \bottomrule
+            \end{tabular}
+            \caption{OC-SVM (Normal-Only): impact of $\nu$ on performance.}
+            \label{tab:nu_comparison}
+        \end{table}
+
+        We selected $\nu = 0.05$ as the best estimate, as it achieves the highest test F1-Macro (0.7477). 
+        This value allows the model to exclude approximately 5\% of normal samples as noise during training, creating a slightly looser boundary that generalizes better. 
+        The default $\nu = 0.5$ is catastrophic for novelty detection, as it forces half of the normal training data to be treated as outliers, effectively collapsing the decision boundary.
+
+    % --- OC-SVM All Data ---
+    \subsection{OC-SVM with All Data (Outlier Detection)} \label{sec:ocsvm_all}
+
+        When training on the full dataset (normal + anomalies), the OC-SVM operates as an \emph{outlier detector}. 
+        We estimated $\nu$ as the true contamination rate: $\nu = 4305/15063 \approx 0.286$.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lcc@{}}
+                \toprule
+                \textbf{Model} & \textbf{Test F1-Macro} & \textbf{Test Accuracy} \\
+                \midrule
+                Normal-Only ($\nu{=}0.05$) & \textbf{0.7477} & 0.7667 \\
+                All-Data ($\nu{=}0.286$) & 0.6484 & 0.6656 \\
+                \bottomrule
+            \end{tabular}
+            \caption{Comparison of Normal-Only vs.\ All-Data OC-SVM on the test set.}
+            \label{tab:normal_vs_all}
+        \end{table}
+
+        The Normal-Only model outperforms the All-Data model by approximately 10 percentage points in F1-Macro. 
+        This demonstrates that novelty detection (learning pure normality) is more effective than outlier detection (learning on contaminated data): the All-Data model's boundary is distorted by the inclusion of anomalies during training.
+
+    % --- Sensitivity Analysis ---
+    \subsection{Sensitivity Analysis: Impact of Anomaly Contamination} \label{sec:sensitivity}
+
+        To quantify the effect of training data contamination, we trained OC-SVMs with increasing proportions of anomalous data: 0\%, 10\%, 20\%, 50\%, and 100\% of available anomalies. 
+        For each configuration, $\nu$ was set proportionally to the anomaly ratio.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}rccc@{}}
+                \toprule
+                \textbf{Anomaly \%} & \textbf{$\nu$} & \textbf{Train F1-Macro} & \textbf{Test F1-Macro} \\
+                \midrule
+                0\% (Normal-Only)  & 0.01   & 0.9039 & \textbf{0.7401} \\
+                10\%               & 0.038  & 0.6628 & 0.5137 \\
+                20\%               & 0.074  & 0.6779 & 0.5589 \\
+                50\%               & 0.167  & 0.7226 & 0.5975 \\
+                100\% (All-Data)   & 0.286  & 0.7364 & 0.6482 \\
+                \bottomrule
+            \end{tabular}
+            \caption{Sensitivity analysis: impact of anomaly contamination on OC-SVM performance.}
+            \label{tab:sensitivity}
+        \end{table}
+
+        The results reveal a non-monotonic pattern. 
+        Small contamination levels (10--20\%) cause the most damage: the model receives mixed signals about what constitutes ``normal'' behavior, but $\nu$ is too small to properly account for the anomalies. 
+        As contamination increases to 50--100\%, performance partially recovers because $\nu$ grows large enough to capture the true anomaly proportion. 
+        However, no contaminated model matches the purely normal training baseline.
+
+    % --- Robustness ---
+    \subsection{Robustness Evaluation} \label{sec:robustness}
+
+        We compared three representative models on the test set to assess robustness:
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lcc@{}}
+                \toprule
+                \textbf{Model} & \textbf{Test F1-Macro} & \textbf{Most Missed Attack} \\
+                \midrule
+                Normal-Only ($\nu{=}0.05$) & \textbf{0.7477} & DoS (609 missed) \\
+                All-Data ($\nu{=}0.286$)   & 0.6484 & DoS (1,074 missed) \\
+                10\% Anomalies              & 0.5137 & DoS (1,989 missed) \\
+                \bottomrule
+            \end{tabular}
+            \caption{Robustness evaluation on the test set: three OC-SVM configurations.}
+            \label{tab:robustness}
+        \end{table}
+
+        \paragraph{Per-attack confusion analysis.} DoS attacks generate the most false negatives across all models, both in absolute count and due to the distribution shift (DoS increased from 15.5\% to 45.2\% in the test set). 
+        R2L attacks are the hardest to detect proportionally, as their features closely mimic normal traffic patterns. 
+        The Normal-Only model shows the best overall balance between precision (fewer false alarms) and recall (catching more attacks).

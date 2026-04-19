@@ -1,0 +1,84 @@
+% task4.tex — Unsupervised Anomaly Detection and Interpretation
+
+% Section Title
+\section{UNSUPERVISED ANOMALY DETECTION AND INTERPRETATION} \label{sec:task4}
+
+    This section explores purely unsupervised clustering approaches --- K-Means and DBSCAN --- for anomaly detection, evaluating their ability to separate attack types without label supervision.
+
+    % --- K-Means ---
+    \subsection{K-Means Clustering} \label{sec:kmeans}
+
+        We applied K-Means with $k = 4$ clusters on the full training data, matching the number of known traffic types (Normal, DoS, Probe, R2L).
+
+        \paragraph{Cluster analysis.}
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}crcccl@{}}
+                \toprule
+                \textbf{Cluster} & \textbf{Size} & \textbf{Silhouette} & \textbf{Dominant Class} & \textbf{Purity} & \textbf{Key Content} \\
+                \midrule
+                0 & 1,560 & 0.261 & probe (54\%) & Mixed & probe, normal, dos \\
+                1 & 1,422 & 0.753 & dos (100\%) & Pure & Nearly all DoS \\
+                2 & 9 & 0.392 & normal (100\%) & Pure & Normal outliers \\
+                3 & 12,072 & 0.461 & normal (85\%) & Mixed & normal, probe, dos, r2l \\
+                \bottomrule
+            \end{tabular}
+            \caption{K-Means cluster composition and quality ($k = 4$, training set).}
+            \label{tab:kmeans_clusters}
+        \end{table}
+
+        The average silhouette score is 0.468, indicating moderate cluster separation. 
+        Cluster~1 achieves excellent separation (silhouette~=~0.753) because DoS floods create distinctly different network traffic patterns (high SYN error rates, high connection counts). 
+        Cluster~0 has the lowest silhouette (0.261), corresponding to a boundary region mixing probe, normal, and some DoS traffic. 
+        All 144 R2L attacks are absorbed into Cluster~3 alongside normal traffic, confirming that R2L attacks are indistinguishable from normal behavior using Euclidean distance.
+
+        \paragraph{Post-hoc anomaly detection.} Using majority voting to assign binary labels to clusters, K-Means achieves a training F1-Macro of 0.7954.
+        However, this requires label access for evaluation and does not generalize to unseen data.
+
+    % --- t-SNE ---
+    \subsection{t-SNE Visualization} \label{sec:tsne}
+
+        We applied t-SNE to project the training data into 2D, testing three perplexity values: 5 (local focus), 30 (balanced), and 100 (global). 
+        Perplexity~=~30 provides the best balance between local and global structure.
+
+        \paragraph{Cluster vs.\ true label comparison.} The side-by-side t-SNE comparison between K-Means cluster assignments and true attack labels reveals key insights: K-Means correctly separates the DoS cluster (Cluster~1 maps cleanly to the DoS group in t-SNE space), but Cluster~3 absorbs diverse traffic types that t-SNE shows as separable groups. 
+        Notably, R2L attacks completely overlap with normal traffic in the t-SNE projection, confirming the difficulty of their detection.
+
+    % --- DBSCAN ---
+    \subsection{DBSCAN Clustering} \label{sec:dbscan}
+
+        DBSCAN identifies dense clusters and labels remaining points as noise ($-1$), which we interpret as potential anomalies. 
+        We investigated two configurations using cosine distance.
+
+        \paragraph{Parameter selection.} The \texttt{min\_pts} parameter was derived from K-Means analysis: the smallest pure-normal cluster across $k \in \{4, \ldots, 10\}$ had 7 points, yielding $\texttt{min\_pts} = 7$. 
+        The $\epsilon$ parameter was selected from the k-distance graph.
+
+        \paragraph{Configuration comparison.} We tested multiple \texttt{min\_pts} values to understand the sensitivity:
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}rcccccc@{}}
+                \toprule
+                \textbf{min\_pts} & \textbf{$\epsilon$} & \textbf{Clusters} & \textbf{Noise \%} & \textbf{F1-Macro} & \textbf{Noise: Normal} & \textbf{Noise: Anomaly} \\
+                \midrule
+                7    & 0.064 & 40 & 3.2\% & 0.4285 & 80.9\% & 19.1\% \\
+                100  & 0.053 & 17 & 21.8\% & 0.4707 & 76.0\% & 24.0\% \\
+                500  & 0.260 & 4  & 14.2\% & 0.4874 & 70.7\% & 29.3\% \\
+                1600 & 0.635 & 1  & 2.0\%  & 0.4466 & 52.5\% & 47.5\% \\
+                \bottomrule
+            \end{tabular}
+            \caption{DBSCAN sensitivity analysis: impact of \texttt{min\_pts} (cosine distance).}
+            \label{tab:dbscan_comparison}
+        \end{table}
+
+        \paragraph{Analysis.} No configuration yields effective anomaly detection (all F1-Macro $< 0.5$). With small \texttt{min\_pts} (7), the noise cluster is dominated by normal outliers (80.9\%). Increasing \texttt{min\_pts} shifts the noise composition toward anomalies (47.5\% anomalous at \texttt{min\_pts}~=~1600), but at the cost of collapsing all data into a single cluster. The \texttt{min\_pts}~=~500 configuration offers the most interpretable result with 4 clusters and 14.2\% noise, but performance remains poor.
+
+        \paragraph{Why DBSCAN noise $\neq$ anomaly detection.} The fundamental mismatch lies in the density assumption:
+        \begin{itemize}
+            \item \textbf{Dense attacks form valid clusters:} DoS floods generate thousands of repetitive connections that DBSCAN groups into dense clusters, not noise.
+            \item \textbf{Sparse normal outliers trigger noise:} Normal traffic with unusual feature combinations (rare services, atypical durations) is isolated and flagged as noise.
+            \item \textbf{R2L attacks hide in normal clusters:} R2L mimics legitimate behavior and remains embedded within normal-dominated clusters.
+        \end{itemize}
+
+        This demonstrates that density-based clustering alone cannot serve as a reliable intrusion detection system --- the density structure of network traffic does not align with the normal/anomalous dichotomy.

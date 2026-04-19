@@ -30,6 +30,7 @@
 % --- Tables and Lists ---
 \usepackage{booktabs}        % For professional tables
 \usepackage{enumitem}        % For customizing list formatting and styles
+\usepackage{float}           % For [H] float placement specifier
 
 % --- Code and Text Formatting ---
 \usepackage{listings}        % For code listings and snippets
@@ -38,6 +39,7 @@
 
 % --- Navigation and References ---
 \usepackage{hyperref}        % For links and references (load last)
+\usepackage{cleveref}        % For smart cross-references (\Cref, \cref)
 
 % =============================================================================
 % PROFESSOR'S REQUIREMENTS OVERRIDES
@@ -212,15 +214,15 @@
 
 % --- Table of Contents ---
 % TODO: verify if ToC is needed for final document
-\setcounter{tocdepth}{1}
-\tableofcontents
+% \setcounter{tocdepth}{1}
+% \tableofcontents
 
 % --- Main Content Sections ---
 \input{\sectionspath introduction}
-% \input{\sectionspath task1}
-% \input{\sectionspath task2}
-% \input{\sectionspath task3}
-% \input{\sectionspath task4}
+\input{\sectionspath task1}
+\input{\sectionspath task2}
+\input{\sectionspath task3}
+\input{\sectionspath task4}
 \input{\sectionspath conclusion}
 
 % --- Appendix ---

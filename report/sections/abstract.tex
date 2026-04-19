@@ -2,6 +2,6 @@
 
 \begin{abstract}
 
-    This is the abstract of the report.
-    
+    This report presents a comparative study of anomaly detection methods for network intrusion detection, applied to a dataset of network traffic logs containing normal and malicious connections. We evaluate four families of approaches: (i)~One-Class SVM under novelty and outlier detection settings, (ii)~autoencoder-based reconstruction error, (iii)~dimensionality reduction (autoencoder bottleneck and PCA) combined with OC-SVM, and (iv)~unsupervised clustering (K-Means and DBSCAN). Our analysis demonstrates that novelty detection --- training exclusively on normal traffic --- consistently outperforms outlier detection, and that non-linear feature extraction via autoencoder bottleneck embeddings, paired with a properly calibrated OC-SVM ($\nu = 0.1$), achieves the best overall test performance (F1-Macro = 0.7795). We further show that small anomaly contamination during training (10--20\%) is more damaging than full contamination, and that DBSCAN's density-based noise detection is fundamentally misaligned with anomaly detection in network traffic.
+
 \end{abstract}

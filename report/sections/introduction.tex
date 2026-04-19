@@ -3,4 +3,18 @@
 % Section Title
 \section{INTRODUCTION} \label{sec:introduction}
 
-    % text
+    Intrusion Detection Systems (IDS) are a critical component of modern network security, tasked with distinguishing legitimate traffic from malicious activity such as denial-of-service attacks, network probing, and unauthorized access attempts. 
+    A central challenge in this domain is that labeled anomaly data is often scarce or unavailable, motivating the use of anomaly detection methods that learn normality from benign traffic alone.
+
+    This laboratory investigates supervised, semi-supervised, and unsupervised anomaly detection techniques applied to a network traffic dataset derived from the KDD Cup 1999 benchmark. 
+    The dataset contains 43 features describing individual network connections, with labels indicating the traffic type (Normal, DoS, Probe, R2L).
+
+    \noindent Our analysis is structured around four main tasks:
+    \begin{enumerate}
+        \item \textbf{Dataset characterization and preprocessing} (\Cref{sec:task1}): We explore the dataset structure, handle categorical and numerical features, and analyze per-class feature distributions through heatmaps and correlation analysis.
+        \item \textbf{Shallow anomaly detection} (\Cref{sec:task2}): We evaluate One-Class SVM under three training configurations --- normal data only (novelty detection), all data (outlier detection), and mixed contamination levels --- quantifying the impact of the $\nu$ parameter and training data composition.
+        \item \textbf{Deep anomaly detection} (\Cref{sec:task3}): We train an autoencoder on normal data and explore three detection strategies: reconstruction error thresholding, OC-SVM on bottleneck embeddings, and OC-SVM on PCA-reduced features.
+        \item \textbf{Unsupervised clustering} (\Cref{sec:task4}): We apply K-Means and DBSCAN to assess whether purely unsupervised approaches can identify attack patterns, using silhouette analysis, t-SNE visualization, and cluster purity metrics.
+    \end{enumerate}
+
+    All experiments are conducted in Google Colab using scikit-learn and PyTorch, with an 80/20 stratified split performed before preprocessing to prevent data leakage.

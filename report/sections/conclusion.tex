@@ -3,4 +3,19 @@
 % Section Title
 \section{CONCLUSIONS} \label{sec:conclusions}
 
-    % text
+    This laboratory provided a comprehensive evaluation of anomaly detection methods for network intrusion detection. 
+    Our key findings are summarized below.
+
+    \paragraph{Novelty detection outperforms outlier detection.} Training OC-SVM exclusively on normal traffic ($\nu = 0.05$, F1 = 0.7477) consistently outperforms training on contaminated data ($\nu = 0.286$, F1 = 0.6484). 
+    Small contamination levels (10--20\%) are paradoxically the most damaging, as they distort the decision boundary without providing sufficient anomaly signal.
+
+    \paragraph{Non-linear feature extraction is beneficial.} The autoencoder bottleneck + OC-SVM ($\nu = 0.1$) achieves the best overall test F1-Macro of \textbf{0.7795}, demonstrating that the autoencoder's non-linear compression captures patterns that both linear PCA and the original feature space miss. 
+    However, performance is highly sensitive to the $\nu$ parameter: $\nu = 0.01$ in the same bottleneck space yields only F1 = 0.6645.
+
+    \paragraph{Reconstruction error is a strong stand-alone method.} Autoencoder reconstruction error with a 95th-percentile threshold achieves F1 = 0.7547 without requiring any additional classifier, making it the simplest competitive approach.
+
+    \paragraph{Unsupervised clustering has fundamental limitations for IDS.} K-Means correctly isolates DoS attacks into a pure cluster but absorbs all R2L attacks into the normal-dominated cluster. 
+    DBSCAN's noise detection is fundamentally misaligned with anomaly detection: dense attack patterns form valid clusters, while sparse normal outliers are flagged as noise. 
+    Neither clustering approach is viable as a standalone intrusion detection system.
+
+    \paragraph{Distribution shift remains a challenge.} The test set's drastically different composition (63\% anomalies vs.\ 29\% in training) causes significant performance drops across all methods, highlighting the importance of models that learn robust representations of normality rather than memorizing specific attack patterns.

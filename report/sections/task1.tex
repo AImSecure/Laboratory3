@@ -1,0 +1,81 @@
+% task1.tex — Dataset Characterization and Preprocessing
+
+% Section Title
+\section{DATASET CHARACTERIZATION AND PREPROCESSING} \label{sec:task1}
+
+    This section describes the dataset, the preprocessing pipeline, and the exploratory analysis performed to understand the feature space and identify discriminative patterns.
+
+    % --- Dataset Exploration ---
+    \subsection{Dataset Exploration} \label{sec:dataset}
+
+        The dataset consists of network traffic logs derived from the KDD Cup 1999 dataset, provided as separate training and test CSV files. 
+        Each record represents a network connection, described by 43 columns: 41 features, a multi-class attack label, and a binary label (\texttt{normal} vs.\ \texttt{anomaly}).
+
+        \paragraph{Feature types.} The 41 features include 3 categorical attributes (\texttt{protocol\_type}, \texttt{service}, \texttt{flag}) and 38 numerical attributes. 
+        The categorical features describe the connection protocol, the destination service, and the TCP connection status flag, respectively.
+
+        \paragraph{Label distribution.} The training set contains 18,831 samples with approximately 71.4\% normal traffic and 28.6\% anomalies. 
+        After an 80/20 stratified split, the training partition contains 15,063 samples and the validation partition contains 3,767 samples. 
+        The test set contains 5,826 samples with a notably different distribution: only 36.9\% normal vs.\ 63.1\% anomalous traffic. 
+        This distribution shift between training and test sets is a deliberate challenge that tests model generalization.
+
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{@{}lrrr@{}}
+                \toprule
+                \textbf{Class} & \textbf{Train (80\%)} & \textbf{Val (20\%)} & \textbf{Test} \\
+                \midrule
+                Normal    & 10,758 (71.4\%) & 2,690 (71.4\%) & 2,152 (36.9\%) \\
+                DoS       & 2,330 (15.5\%)  & 583 (15.5\%)   & 2,634 (45.2\%) \\
+                Probe     & 1,830 (12.1\%)  & 458 (12.2\%)   & 1,040 (17.9\%) \\
+                R2L       & 145 (1.0\%)     & 36 (1.0\%)     & 0 (0.0\%)      \\
+                \midrule
+                \textbf{Total} & 15,063 & 3,767 & 5,826 \\
+                \bottomrule
+            \end{tabular}
+            \caption{Label distribution across dataset splits.}
+            \label{tab:label_distribution}
+        \end{table}
+
+        The test set's anomaly-dominant composition --- particularly the absence of R2L attacks and the surge in DoS (from 15.5\% to 45.2\%) --- forces models to generalize beyond the training distribution.
+
+    % --- Preprocessing Pipeline ---
+    \subsection{Preprocessing Pipeline} \label{sec:preprocessing}
+
+        The preprocessing pipeline is designed to ensure clean, standardized input for all downstream models while preventing data leakage.
+
+        \paragraph{Data cleaning.} We first checked for missing values (\texttt{NaN}, \texttt{Inf}) and duplicates, finding one duplicate row which was removed. 
+        We then identified and dropped four zero-variance columns (\texttt{land}, \texttt{urgent}, \texttt{num\_outbound\_cmds}, \texttt{is\_host\_login}), as they provide no discriminative information. 
+        This reduced the feature space from 41 to 37 attributes.
+
+        \paragraph{Train/validation split.} Before any feature transformation, we performed an 80/20 stratified split of the training data. 
+        This is a deliberate design decision: by splitting \emph{before} preprocessing, we ensure that the scaler and encoder are fitted exclusively on training data, preventing any information leakage from the validation into the training pipeline.
+
+        \paragraph{Categorical encoding.} For each categorical feature, we grouped rare values (below a frequency threshold) into an ``other'' category to reduce dimensionality and prevent overfitting to infrequent values. 
+        Specifically, we retained the 8 most frequent services, 5 flags, and 3 protocols. 
+        We then applied One-Hot Encoding with \texttt{handle\_unknown='ignore'} to gracefully handle any unseen categories in the test set.
+
+        \paragraph{Numerical standardization.} All numerical features were standardized using \texttt{StandardScaler}, fitted exclusively on the training partition. 
+        The same transformation was then applied to the validation and test sets. \\
+
+        \noindent After preprocessing, the final feature space consists of \textbf{51 dimensions}: 34 numerical features and 17 one-hot encoded categorical features.
+
+    % --- Feature Analysis ---
+    \subsection{Domain Analysis: Feature Heatmaps} \label{sec:heatmaps}
+
+        To understand which features characterize each attack type, we computed per-class heatmaps of the mean, standard deviation, and median feature values (after standardization).
+
+        \paragraph{Key discriminative patterns.}
+        \begin{itemize}
+            \item \textbf{DoS attacks} exhibit extremely elevated \texttt{serror\_rate} and \texttt{srv\_serror\_rate} ($\mu > 2.0$ standard deviations above the global mean), reflecting SYN flood behavior. 
+                They also show high \texttt{count} and \texttt{srv\_count} values, consistent with connection floods.
+            \item \textbf{Probe attacks} are characterized by high \texttt{dst\_host\_srv\_diff\_host\_rate} and elevated service diversity metrics, reflecting port/host scanning patterns.
+            \item \textbf{R2L attacks} show subtle signatures: slightly elevated \texttt{hot} and \texttt{is\_guest\_login} features, but otherwise closely resemble normal traffic --- explaining why they are the hardest to detect.
+            \item \textbf{Normal traffic} has low, stable values across all anomaly-indicative features, with moderate connection rates.
+        \end{itemize}
+
+    % --- Correlation Analysis ---
+    \subsection{Feature Correlation Analysis} \label{sec:correlation}
+
+        We computed the Pearson correlation matrix across all numerical features and identified several highly correlated pairs ($ r > 0.95$), notably \texttt{serror\_rate}/\texttt{srv\_serror\_rate} ($r = 0.981$) and \texttt{rerror\_rate}/\texttt{srv\_rerror\_rate} ($r = 0.991$). 
+        These strong correlations suggest significant redundancy in the feature space, which motivates the dimensionality reduction methods explored in \Cref{sec:task3} (PCA and autoencoder bottleneck).
