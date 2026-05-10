@@ -19,3 +19,4 @@
     Neither clustering approach is viable as a standalone intrusion detection system.
 
     \paragraph{Distribution shift remains a challenge.} The test set's drastically different composition (63\% anomalies vs.\ 29\% in training) causes significant performance drops across all methods, highlighting the importance of models that learn robust representations of normality rather than memorizing specific attack patterns.
+    Taken together, these results suggest that the most practical deployment strategy for IDS combines an autoencoder (trained on clean normal data) as a feature extractor with a calibrated OC-SVM in the bottleneck space — achieving the best generalization while remaining robust to the distribution shift inherent in real network traffic.

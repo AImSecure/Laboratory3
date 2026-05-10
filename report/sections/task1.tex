@@ -17,7 +17,7 @@
         \paragraph{Label distribution.} The training set contains 18,831 samples with approximately 71.4\% normal traffic and 28.6\% anomalies. 
         After an 80/20 stratified split, the training partition contains 15,063 samples and the validation partition contains 3,767 samples. 
         The test set contains 5,826 samples with a notably different distribution: only 36.9\% normal vs.\ 63.1\% anomalous traffic. 
-        This distribution shift between training and test sets is a deliberate challenge that tests model generalization.
+        This shift — particularly the absence of R2L in the test set and the 3$\times$ increase in DoS prevalence (15.5\% $\rightarrow$ 45.2\%) — creates an intentional domain mismatch that stress-tests model generalization beyond training conditions.
 
         \begin{table}[H]
             \centering
@@ -64,6 +64,14 @@
     \subsection{Domain Analysis: Feature Heatmaps} \label{sec:heatmaps}
 
         To understand which features characterize each attack type, we computed per-class heatmaps of the mean, standard deviation, and median feature values (after standardization).
+        The results are shown in \Cref{fig:task1_heatmaps}.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{images/task1/task1_heatmaps_combined.png}
+            \caption{Feature analysis across attack classes: standardized Mean, Standard Deviation, and Median. DoS attacks exhibit strong error-rate signals, while R2L attacks closely mimic normal traffic.}
+            \label{fig:task1_heatmaps}
+        \end{figure}
 
         \paragraph{Key discriminative patterns.}
         \begin{itemize}

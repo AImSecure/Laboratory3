@@ -18,10 +18,10 @@
                 \toprule
                 \textbf{Cluster} & \textbf{Size} & \textbf{Silhouette} & \textbf{Dominant Class} & \textbf{Purity} & \textbf{Key Content} \\
                 \midrule
-                0 & 1,560 & 0.261 & probe (54\%) & Mixed & probe, normal, dos \\
-                1 & 1,422 & 0.753 & dos (100\%) & Pure & Nearly all DoS \\
-                2 & 9 & 0.392 & normal (100\%) & Pure & Normal outliers \\
-                3 & 12,072 & 0.461 & normal (85\%) & Mixed & normal, probe, dos, r2l \\
+                0 & 1,560 & 0.261 & probe (54\%) & Mixed & probe 54\%, normal 30\%, dos 16\% \\
+                1 & 1,422 & 0.753 & dos (100\%) & Pure & dos 100\% \\
+                2 & 9 & 0.392 & normal (100\%) & Pure & normal 100\% \\
+                3 & 12,072 & 0.461 & normal (85\%) & Mixed & normal 85\%, probe 9\%, r2l 4\%, dos 2\% \\
                 \bottomrule
             \end{tabular}
             \caption{K-Means cluster composition and quality ($k = 4$, training set).}
@@ -33,6 +33,20 @@
         Cluster~0 has the lowest silhouette (0.261), corresponding to a boundary region mixing probe, normal, and some DoS traffic. 
         All 144 R2L attacks are absorbed into Cluster~3 alongside normal traffic, confirming that R2L attacks are indistinguishable from normal behavior using Euclidean distance.
 
+        \begin{figure}[H]
+            \centering
+            \begin{minipage}{0.48\linewidth}
+                \includegraphics[width=\linewidth]{images/task4/task4_kmeans_attack_distribution.png}
+                \caption*{(a) Cluster composition.}
+            \end{minipage}\hfill
+            \begin{minipage}{0.48\linewidth}
+                \includegraphics[width=\linewidth]{images/task4/task4_kmeans_silhouette.png}
+                \caption*{(b) Silhouette scores.}
+            \end{minipage}
+            \caption{Silhouette plot for K-Means ($k=4$). Cluster 1 (DoS, silhouette=0.753) is nearly pure, while Cluster 0 (probe-dominated, silhouette=0.261) represents the most ambiguous boundary region.}
+            \label{fig:task4_silhouette}
+        \end{figure}
+
         \paragraph{Post-hoc anomaly detection.} Using majority voting to assign binary labels to clusters, K-Means achieves a training F1-Macro of 0.7954.
         However, this requires label access for evaluation and does not generalize to unseen data.
 
@@ -42,8 +56,15 @@
         We applied t-SNE to project the training data into 2D, testing three perplexity values: 5 (local focus), 30 (balanced), and 100 (global). 
         Perplexity~=~30 provides the best balance between local and global structure.
 
-        \paragraph{Cluster vs.\ true label comparison.} The side-by-side t-SNE comparison between K-Means cluster assignments and true attack labels reveals key insights: K-Means correctly separates the DoS cluster (Cluster~1 maps cleanly to the DoS group in t-SNE space), but Cluster~3 absorbs diverse traffic types that t-SNE shows as separable groups. 
+        \paragraph{Cluster vs.\ true label comparison.} The side-by-side t-SNE comparison between K-Means cluster assignments and true attack labels (\Cref{fig:task4_tsne}) reveals key insights: K-Means correctly separates the DoS cluster (Cluster~1 maps cleanly to the DoS group in t-SNE space), but Cluster~3 absorbs diverse traffic types that t-SNE shows as separable groups. 
         Notably, R2L attacks completely overlap with normal traffic in the t-SNE projection, confirming the difficulty of their detection.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{images/task4/task4_tsne_comparison.png}
+            \caption{t-SNE projection (perplexity=30). Cluster 1 aligns cleanly with the DoS island (bottom-left), but Cluster 3 absorbs both probe and R2L traffic that t-SNE shows as geometrically separable from normal samples.}
+            \label{fig:task4_tsne}
+        \end{figure}
 
     % --- DBSCAN ---
     \subsection{DBSCAN Clustering} \label{sec:dbscan}
@@ -52,7 +73,7 @@
         We investigated two configurations using cosine distance.
 
         \paragraph{Parameter selection.} The \texttt{min\_pts} parameter was derived from K-Means analysis: the smallest pure-normal cluster across $k \in \{4, \ldots, 10\}$ had 7 points, yielding $\texttt{min\_pts} = 7$. 
-        The $\epsilon$ parameter was selected from the k-distance graph.
+        Given that this heuristic yields a very small value likely to over-cluster, we expanded the search to $\texttt{min\_pts} \in \{7, 100, 500, 1600\}$, selecting $\epsilon$ from the k-distance elbow at each setting.
 
         \paragraph{Configuration comparison.} We tested multiple \texttt{min\_pts} values to understand the sensitivity:
 
@@ -68,7 +89,7 @@
                 1600 & 0.635 & 1  & 2.0\%  & 0.4466 & 52.5\% & 47.5\% \\
                 \bottomrule
             \end{tabular}
-            \caption{DBSCAN sensitivity analysis: impact of \texttt{min\_pts} (cosine distance).}
+            \caption{DBSCAN sensitivity across \texttt{min\_pts} values (cosine distance). Even the best configuration (\texttt{min\_pts}=500) is dominated by normal outliers in the noise cluster (70.7\%).}
             \label{tab:dbscan_comparison}
         \end{table}
 

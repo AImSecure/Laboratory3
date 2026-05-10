@@ -18,7 +18,7 @@
         \paragraph{Composite loss function.} Since the feature space contains both numerical and categorical (one-hot encoded) features, we used a composite loss: MSE for numerical features and Cross-Entropy for each one-hot encoded categorical group. 
         This ensures the autoencoder learns appropriate reconstruction for each feature type.
 
-        \paragraph{Training procedure.} The autoencoder was trained exclusively on \emph{normal} validation data (10,758 samples) in a semi-supervised fashion: by learning to reconstruct only normal traffic, anomalies should produce higher reconstruction errors due to unfamiliar patterns.
+        \paragraph{Training procedure.} The autoencoder was trained exclusively on the \emph{normal} data from the training set (10,758 samples) in a semi-supervised fashion: by learning to reconstruct only normal traffic, anomalies should produce higher reconstruction errors due to unfamiliar patterns.
 
     % --- Hyperparameter Tuning ---
     \subsection{Hyperparameter Tuning} \label{sec:hp_tuning}
@@ -44,12 +44,26 @@
         The learning rate $5 \times 10^{-4}$ achieves the lowest validation loss (0.1140) at epoch 82 before early stopping. 
         Higher learning rates converge faster but to worse optima, while $10^{-4}$ underfits within 150 epochs.
 
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{images/task3/task3_autoencoder_analysis_combined.png}
+            \caption{AE loss curves across four learning rates. $lr=5\times 10^{-4}$ achieves the lowest validation loss (0.1140) before early stopping at epoch 97, while $10^{-4}$ fails to converge within 150 epochs.}
+            \label{fig:task3_ae_loss}
+        \end{figure}
+
     % --- Reconstruction Error Threshold ---
     \subsection{Reconstruction Error Analysis} \label{sec:reconstruction}
 
         \paragraph{Threshold selection.} We computed the ECDF (Empirical Cumulative Distribution Function) of reconstruction errors on the autoencoder validation set (normal data only). 
         The \textbf{95th percentile} was selected as the anomaly threshold: $\theta = 0.3604$. 
         This means approximately 5\% of normal data is expected to be misclassified as anomalous --- an acceptable false positive rate that accounts for natural variation in normal traffic.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.85\linewidth]{images/task3/task3_ecdf_combined.png}
+            \caption{Empirical Cumulative Distribution Function (ECDF) of reconstruction errors across Validation, Train, and Test sets.}
+            \label{fig:task3_ecdf}
+        \end{figure}
 
         \paragraph{Anomaly detection performance.} Samples with reconstruction error $> \theta$ are classified as anomalies.
 
@@ -76,7 +90,7 @@
 
         We extracted the 16-dimensional bottleneck embeddings from the trained encoder and used them as input features for an OC-SVM trained on normal data only.
 
-        \paragraph{$\nu$ calibration.} We tested two values: $\nu = 0.01$ (conservative) and $\nu = 0.1$ (accounting for the approximately 10\% of normal data with elevated reconstruction error in the bottleneck space).
+        \paragraph{$\nu$ calibration.} We tested two values: $\nu = 0.01$ (conservative) and $\nu = 0.1$. This value was motivated empirically: the ECDF of bottleneck-space reconstruction errors for normal samples shows a roughly 10th-percentile inflection, suggesting that $\sim$10\% of normal points inhabit atypical regions of the compressed manifold. Setting $\nu$ below this fraction forces the OC-SVM to exclude geometrically valid normal points, shrinking the boundary and inflating false positives.
 
         \begin{table}[H]
             \centering
@@ -123,22 +137,12 @@
 
         \Cref{tab:task3_comparison} consolidates all anomaly detection methods from Tasks~2 and~3.
 
-        \begin{table}[H]
+        \begin{figure}[H]
             \centering
-            \begin{tabular}{@{}llcc@{}}
-                \toprule
-                \textbf{Task} & \textbf{Method} & \textbf{Dim.} & \textbf{Test F1-Macro} \\
-                \midrule
-                3 & AE Bottleneck + OC-SVM ($\nu{=}0.1$) & 16 & \textbf{0.7795} \\
-                3 & AE Reconstruction Error              & 51 & 0.7547 \\
-                2 & OC-SVM Normal-Only ($\nu{=}0.05$)    & 51 & 0.7477 \\
-                3 & PCA + OC-SVM                         & 20 & 0.7377 \\
-                2 & OC-SVM All-Data ($\nu{=}0.286$)      & 51 & 0.6484 \\
-                \bottomrule
-            \end{tabular}
-            \caption{Comprehensive comparison of anomaly detection methods (test set).}
-            \label{tab:task3_comparison}
-        \end{table}
+            \includegraphics[width=0.7\linewidth]{images/task3/task3_methods_comparison.png}
+            \caption{Comprehensive comparison of anomaly detection methods (test set F1-Macro).}
+            \label{fig:task3_comparison}
+        \end{figure}
 
         The AE Bottleneck + OC-SVM achieves the highest test F1-Macro, demonstrating that the autoencoder's non-linear compression captures discriminative patterns that both linear PCA and the original feature space miss. 
         The key factor is pairing the bottleneck representation with an appropriately calibrated $\nu$ parameter.
