@@ -1,22 +1,28 @@
 % conclusion.tex
 
-% Section Title
 \section{CONCLUSIONS} \label{sec:conclusions}
 
-    This laboratory provided a comprehensive evaluation of anomaly detection methods for network intrusion detection. 
-    Our key findings are summarized below.
+This laboratory provided a comprehensive evaluation of anomaly detection methods for network intrusion detection across four methodological families.
+Our key findings are summarized below.
 
-    \paragraph{Novelty detection outperforms outlier detection.} Training OC-SVM exclusively on normal traffic ($\nu = 0.05$, F1 = 0.7477) consistently outperforms training on contaminated data ($\nu = 0.286$, F1 = 0.6484). 
-    Small contamination levels (10--20\%) are paradoxically the most damaging, as they distort the decision boundary without providing sufficient anomaly signal.
+\textbf{Novelty detection outperforms outlier detection.}
+Training OC-SVM exclusively on normal traffic ($\nu = 0.05$, F1 = 0.7477) consistently outperforms training on contaminated data ($\nu = 0.286$, F1 = 0.6484).
+Crucially, small contamination levels (10--20\%) are paradoxically the most damaging: at just 10\% contamination, test F1 drops to 0.514 and the false negative rate on DoS rises to 75.5\% --- a 3.3$\times$ increase over the clean baseline --- because the model receives conflicting signals about normality while $\nu$ remains too small to absorb the anomaly fraction.
 
-    \paragraph{Non-linear feature extraction is beneficial.} The autoencoder bottleneck + OC-SVM ($\nu = 0.1$) achieves the best overall test F1-Macro of \textbf{0.7795}, demonstrating that the autoencoder's non-linear compression captures patterns that both linear PCA and the original feature space miss. 
-    However, performance is highly sensitive to the $\nu$ parameter: $\nu = 0.01$ in the same bottleneck space yields only F1 = 0.6645.
+\textbf{Non-linear feature extraction is beneficial, but calibration is critical.}
+The autoencoder bottleneck + OC-SVM ($\nu = 0.1$) achieves the best overall test F1-Macro of \textbf{0.7795}, demonstrating that the autoencoder's non-linear compression captures discriminative patterns that both linear PCA and the original 51-dimensional feature space miss.
+However, the same bottleneck representation with $\nu = 0.01$ yields only F1 = 0.6645, a gap of 11.5 percentage points, confirming that architecture choice and hyperparameter selection are jointly critical.
 
-    \paragraph{Reconstruction error is a strong stand-alone method.} Autoencoder reconstruction error with a 95th-percentile threshold achieves F1 = 0.7547 without requiring any additional classifier, making it the simplest competitive approach.
+\textbf{Reconstruction error is the strongest stand-alone method.}
+Autoencoder reconstruction error with a 95th-percentile threshold ($\theta = 0.3604$) achieves F1 = 0.7547 without requiring any additional classifier.
+The ECDF comparison across datasets confirms that the autoencoder successfully learned the normal manifold: anomalous samples in the full training set and test set produce substantially heavier reconstruction error tails than normal-only validation data.
 
-    \paragraph{Unsupervised clustering has fundamental limitations for IDS.} K-Means correctly isolates DoS attacks into a pure cluster but absorbs all R2L attacks into the normal-dominated cluster. 
-    DBSCAN's noise detection is fundamentally misaligned with anomaly detection: dense attack patterns form valid clusters, while sparse normal outliers are flagged as noise. 
-    Neither clustering approach is viable as a standalone intrusion detection system.
+\textbf{Unsupervised clustering has fundamental limitations for IDS.}
+K-Means correctly isolates DoS attacks into a near-pure cluster (silhouette = 0.753) but absorbs all 144 R2L attacks into the normal-dominated cluster, reflecting the inability of Euclidean distance to separate low-volume privilege-escalation attacks.
+DBSCAN's noise detection is fundamentally misaligned with the anomaly detection task: dense DoS floods form valid clusters and escape detection, while sparse normal outliers are incorrectly flagged as noise.
+Neither clustering approach is viable as a standalone intrusion detection system.
 
-    \paragraph{Distribution shift remains a challenge.} The test set's drastically different composition (63\% anomalies vs.\ 29\% in training) causes significant performance drops across all methods, highlighting the importance of models that learn robust representations of normality rather than memorizing specific attack patterns.
-    Taken together, these results suggest that the most practical deployment strategy for IDS combines an autoencoder (trained on clean normal data) as a feature extractor with a calibrated OC-SVM in the bottleneck space — achieving the best generalization while remaining robust to the distribution shift inherent in real network traffic.
+\textbf{Distribution shift remains the primary generalization challenge.}
+The test set's drastically different composition (63\% anomalies vs.\ 29\% in training), combined with the 3$\times$ surge in DoS prevalence and the absence of R2L attacks, causes significant performance drops across all methods.
+Taken together, these results suggest that the most practical deployment strategy for IDS is to combine an autoencoder --- trained on clean normal data --- as a non-linear feature extractor with a calibrated OC-SVM in the bottleneck space.
+This pipeline achieves the best generalization while remaining robust to the distribution shift inherent in real network traffic, where attack distributions evolve continuously and labeled anomaly data is rarely available at training time.

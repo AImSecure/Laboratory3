@@ -95,7 +95,7 @@
 
 % --- List Formatting Configuration ---
 % Configure bullet points with customized size
-\setlist[itemize,1]{label={\Large\textbullet}} % First level: larger bullet point
+\setlist[itemize,1]{label={\Large\textbullet}, leftmargin=1em} % First level: larger bullet point
 \setlist[itemize,2]{label={\Large\textbullet}, leftmargin=2em} % Second level: larger bullet point and indented by 2em
 
 % =============================================================================
@@ -170,7 +170,6 @@
 
 % --- Author Information ---
 \author{Andrea Botticella}
-\authornote{The authors collaborated closely in developing this project.}
 \email{andrea.botticella@studenti.polito.it}
 \affiliation{%
   \institution{s347291, Politecnico di Torino}
@@ -179,7 +178,6 @@
 }
 
 \author{Elia Innocenti}
-\authornotemark[1]
 \email{elia.innocenti@studenti.polito.it}
 \affiliation{%
   \institution{s345388, Politecnico di Torino}
@@ -188,7 +186,6 @@
 }
 
 \author{Simone Romano}
-\authornotemark[1]
 \email{simone.romano2@studenti.polito.it}
 \affiliation{%
   \institution{s344024, Politecnico di Torino}
@@ -223,7 +220,7 @@
 \input{\sectionspath task2}
 \input{\sectionspath task3}
 \input{\sectionspath task4}
-\input{\sectionspath conclusion}
+% \input{\sectionspath conclusion}
 
 % --- Appendix ---
 % \clearpage
